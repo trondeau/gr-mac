@@ -20,12 +20,12 @@
 install(FILES
     mac_simple_mac.xml
     mac_virtual_channel_encoder.xml
-	mac_virtual_channel_decoder.xml
+    mac_virtual_channel_decoder.xml
     mac_packet_framer.xml
     mac_packet_deframer.xml
-	mac_packet_to_pdu.xml
-	mac_802_3_tracker.xml
-	mac_burst_tagger.xml
+    mac_packet_to_pdu.xml
+    mac_802_3_tracker.xml
+    mac_burst_tagger.xml
+    mac_pdu_packet_rx.xml
     DESTINATION share/gnuradio/grc/blocks
 )
-

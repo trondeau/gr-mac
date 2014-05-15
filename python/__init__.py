@@ -48,7 +48,7 @@ from mac_swig import *
 from simple_mac import simple_mac
 from virtual_channel_encoder import virtual_channel_encoder
 from virtual_channel_decoder import virtual_channel_decoder
-from packet_framer import packet_framer, packet_deframer, packet_to_pdu
+from packet_framer import packet_framer, packet_deframer, packet_to_pdu, pdu_packet_rx
 from tracker_802_3 import tracker_802_3
 import constants
 

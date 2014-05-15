@@ -1,23 +1,23 @@
 #
 # Copyright 1980-2012 Free Software Foundation, Inc.
-# 
+#
 # This file is part of GNU Radio
-# 
+#
 # GNU Radio is free software; you can redistribute it and/or modify
 # it under the terms of the GNU General Public License as published by
 # the Free Software Foundation; either version 3, or (at your option)
 # any later version.
-# 
+#
 # GNU Radio is distributed in the hope that it will be useful,
 # but WITHOUT ANY WARRANTY; without even the implied warranty of
 # MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
 # GNU General Public License for more details.
-# 
+#
 # You should have received a copy of the GNU General Public License
 # along with GNU Radio; see the file COPYING.  If not, write to
 # the Free Software Foundation, Inc., 51 Franklin Street,
 # Boston, MA 02110-1301, USA.
-# 
+#
 import time, threading, traceback
 import Queue
 from math import pi
@@ -25,6 +25,8 @@ from gnuradio import gr
 from gnuradio.digital import packet_utils
 import gnuradio.digital as gr_digital
 import pmt
+
+import struct
 
 # /////////////////////////////////////////////////////////////////////////////
 #                   mod/demod with packets as i/o
@@ -58,11 +60,11 @@ class packet_framer(gr.basic_block):
             name="packet_framer",
             in_sig=None,
             out_sig=None)
-        
+
         self.message_port_register_out(pmt.intern('out'))
         self.message_port_register_in(pmt.intern('in'))
         self.set_msg_handler(pmt.intern('in'), self.packetise)
-        
+
         if not access_code:
             access_code = packet_utils.default_access_code
         if not packet_utils.is_1_0_string(access_code):
@@ -76,23 +78,23 @@ class packet_framer(gr.basic_block):
         self.access_code = access_code
         self.preamble = preamble
         self.postamble = postamble
-    
+
     def packetise(self, msg):
         data = pmt.cdr(msg)
         meta = pmt.car(msg)
         if not pmt.is_u8vector(data):
             #raise NameError("Data is no u8 vector")
             return "Message data is not u8vector"
-        
+
         buf = pmt.u8vector_elements(data)
         buf_str = "".join(map(chr, buf))
-        
+
         # FIXME: Max: 4096-header-crc
-        
+
         meta_dict = pmt.to_python(meta)
         if not (type(meta_dict) is dict):
             meta_dict = {}
-        
+
         pkt = ""
         pkt += self.preamble
         pkt += packet_utils.make_packet(
@@ -116,13 +118,13 @@ class packet_framer(gr.basic_block):
         if len(self._pkt) == 0 :
             item_index = num_items #which output item gets the tag?
             offset = self.nitems_written(0) + item_index
-            source = pmt.pmt_string_to_symbol("framer")                
+            source = pmt.pmt_string_to_symbol("framer")
             if self.has_tx_time:
                 key = pmt.pmt_string_to_symbol("tx_sob")
                 self.add_item_tag(0, self.nitems_written(0), key, pmt.PMT_T, source)
                 key = pmt.pmt_string_to_symbol("tx_time")
                 self.add_item_tag(0, self.nitems_written(0), key, pmt.from_python(self.tx_time), source)
-       
+
             if self.more_frame_cnt == 0:
                 key = pmt.pmt_string_to_symbol("tx_eob")
                 self.add_item_tag(0, offset - 1, key, pmt.PMT_T, source)
@@ -181,10 +183,11 @@ class packet_to_pdu(gr.basic_block):
     def post_data(self, data, type=None, arg1=None, arg2=None):
         ok, payload = packet_utils.unmake_packet(data, int(arg1), self.dewhiten)
         if not ok:
-            #print "Packet of length %d failed CRC" % (len(data))    # Max len is 4095
+            print "Packet of length %d failed CRC" % (len(data))    # Max len is 4095
             if not self.output_invalid:
                 return
         payload = map(ord, list(payload))
+        print map(hex, payload)
         buf = pmt.init_u8vector(len(payload), payload)
         meta_dict = {'CRC_OK': ok}
         meta = pmt.to_pmt(meta_dict)
@@ -200,6 +203,37 @@ class packet_to_pdu(gr.basic_block):
     def __del__(self):
         self.stop()
 
+
+class pdu_packet_rx(gr.basic_block):
+    def __init__(self, dewhiten=True, output_invalid=False):
+        gr.basic_block.__init__(self, name="pdu_packet_rx",
+                                in_sig=None, out_sig=None)
+        self.msg_out = pmt.intern('out')
+        self.message_port_register_out(self.msg_out)
+
+        self.msg_in  = pmt.intern('in')
+        self.message_port_register_in(self.msg_in)
+        self.set_msg_handler(self.msg_in, self.handle_pdu)
+
+        self.dewhiten = dewhiten
+        self.output_invalid = output_invalid
+
+    def handle_pdu(self, msg):
+        meta = pmt.car(msg)
+        data = pmt.u8vector_elements(pmt.cdr(msg))
+        data = ''.join([chr(d+0x30) for d in data])
+        data = packet_utils.conv_1_0_string_to_packed_binary_string(data)[0]
+
+        ok, payload = packet_utils.unmake_packet(data, 0, self.dewhiten)
+        if not ok:
+            #print "Packet of length %d failed CRC" % (len(data))    # Max len is 4095
+            if not self.output_invalid:
+                return
+
+        payload = map(ord, list(payload))
+        buf = pmt.init_u8vector(len(payload), payload)
+        meta = pmt.dict_add(meta, pmt.intern('CRC_OK'), pmt.from_bool(ok))
+        self.message_port_pub(self.msg_out, pmt.cons(meta, buf))
 
 class packet_deframer(gr.hier_block2):
     """
@@ -227,18 +261,18 @@ class packet_deframer(gr.hier_block2):
             gr.io_signature(1, 1, 1),
             gr.io_signature(0, 0, 0)
         )
-        
+
         if not access_code:
             access_code = packet_utils.default_access_code
         if not packet_utils.is_1_0_string(access_code):
             raise ValueError, "Invalid access_code %r. Must be string of 1's and 0's" % (access_code,)
-        
+
         if threshold < 0:
             raise ValueError, "Invalid threshold value %d" % (threshold)
-        
+
         #default_access_code = conv_packed_binary_string_to_1_0_string('\xAC\xDD\xA4\xE2\xF2\x8C\x20\xFC')
         #default_preamble = conv_packed_binary_string_to_1_0_string('\xA4\xF2')
-        
+
         self.msgq = msgq
         self.correlator = gr_digital.correlate_access_code_bb(access_code, threshold)
         self.framer_sink = gr_digital.framer_sink_1(self.msgq)
