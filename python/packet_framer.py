@@ -47,7 +47,8 @@ class packet_framer(gr.basic_block):
         rotate_whitener_offset=False,
         whiten=True,
         preamble='',
-        postamble=''
+        postamble='',
+        crc_calc=True
     ):
         """
         Create a new packet framer.
@@ -78,6 +79,7 @@ class packet_framer(gr.basic_block):
         self.access_code = access_code
         self.preamble = preamble
         self.postamble = postamble
+        self.crc_calc = crc_calc
 
     def packetise(self, msg):
         data = pmt.cdr(msg)
@@ -105,7 +107,8 @@ class packet_framer(gr.basic_block):
             access_code=self.access_code,
             pad_for_usrp=False,#pad_for_usrp,
             whitener_offset=self.whitener_offset,
-            whitening=self.whiten
+            whitening=self.whiten,
+            calc_crc=self.crc_calc
             )
         pkt += self.postamble
         pkt = map(ord, list(pkt))
@@ -187,7 +190,6 @@ class packet_to_pdu(gr.basic_block):
             if not self.output_invalid:
                 return
         payload = map(ord, list(payload))
-        print map(hex, payload)
         buf = pmt.init_u8vector(len(payload), payload)
         meta_dict = {'CRC_OK': ok}
         meta = pmt.to_pmt(meta_dict)
@@ -205,7 +207,8 @@ class packet_to_pdu(gr.basic_block):
 
 
 class pdu_packet_rx(gr.basic_block):
-    def __init__(self, dewhiten=True, output_invalid=False):
+    def __init__(self, dewhiten=True, output_invalid=False,
+                 check_crc=True):
         gr.basic_block.__init__(self, name="pdu_packet_rx",
                                 in_sig=None, out_sig=None)
         self.msg_out = pmt.intern('out')
@@ -216,17 +219,17 @@ class pdu_packet_rx(gr.basic_block):
         self.set_msg_handler(self.msg_in, self.handle_pdu)
 
         self.dewhiten = dewhiten
+        self.check_crc = check_crc
         self.output_invalid = output_invalid
 
     def handle_pdu(self, msg):
         meta = pmt.car(msg)
         data = pmt.u8vector_elements(pmt.cdr(msg))
-        data = ''.join([chr(d+0x30) for d in data])
-        data = packet_utils.conv_1_0_string_to_packed_binary_string(data)[0]
+        data = ''.join([chr(d) for d in data])
 
-        ok, payload = packet_utils.unmake_packet(data, 0, self.dewhiten)
+        ok, payload = packet_utils.unmake_packet(data, 0, self.dewhiten, self.check_crc)
         if not ok:
-            #print "Packet of length %d failed CRC" % (len(data))    # Max len is 4095
+            print "Packet of length %d failed CRC" % (len(data))    # Max len is 4095
             if not self.output_invalid:
                 return
 

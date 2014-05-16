@@ -17,6 +17,7 @@
 	whiten=$whiten,
 	preamble=$preamble,
 	postamble=$postamble,
+        crc_calc=$calc_crc
 )</make>
     <!--<param>
         <name>Samples/Symbol</name>
@@ -40,7 +41,7 @@
         <value>0</value>
         <type>int</type>
     </param>
-	<param>
+    <param>
 		<name>Whiten</name>
 		<key>whiten</key>
 		<value>True</value>
@@ -54,8 +55,8 @@
 			<name>No</name>
 			<key>False</key>
 		</option>
-	</param>
-	<param>
+    </param>
+    <param>
 		<name>Rotate Whitener</name>
 		<key>rotate_whitener_offset</key>
 		<value>False</value>
@@ -69,19 +70,37 @@
 			<name>No</name>
 			<key>False</key>
 		</option>
-	</param>
-	<param>
-        <name>Preamble</name>
-        <key>preamble</key>
-        <value>''</value>
-        <type>raw</type>
     </param>
-	<param>
-        <name>Postamble</name>
-        <key>postamble</key>
-        <value>''</value>
-        <type>raw</type>
+
+    <param>
+      <name>Preamble</name>
+      <key>preamble</key>
+      <value>''</value>
+      <type>raw</type>
     </param>
+
+    <param>
+      <name>Postamble</name>
+      <key>postamble</key>
+      <value>''</value>
+      <type>raw</type>
+    </param>
+
+    <param>
+      <name>Calc CRC32</name>
+      <key>calc_crc</key>
+      <value>True</value>
+      <type>enum</type>
+      <option>
+	<name>Yes</name>
+	<key>True</key>
+      </option>
+      <option>
+	<name>No</name>
+	<key>False</key>
+      </option>
+    </param>
+
     <sink>
         <name>in</name>
         <type>message</type>

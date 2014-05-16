@@ -9,7 +9,10 @@
     <key>mac_pdu_packet_rx</key>
     <category>gr-mac</category>
     <import>import mac</import>
-    <make>mac.pdu_packet_rx(dewhiten=$dewhiten, output_invalid=$output_invalid)</make>
+    <make>mac.pdu_packet_rx(dewhiten=$dewhiten,
+    output_invalid=$output_invalid
+    crc_calc=$check_crc
+)</make>
 
     <param>
       <name>Dewhiten</name>
@@ -33,6 +36,21 @@
       <value>False</value>
       <type>enum</type>
       <!--<hide>#if str($dewhiten()) == 'True' then 'none' else 'part'#</hide>-->
+      <option>
+	<name>Yes</name>
+	<key>True</key>
+      </option>
+      <option>
+	<name>No</name>
+	<key>False</key>
+      </option>
+    </param>
+
+    <param>
+      <name>Check CRC32</name>
+      <key>check_crc</key>
+      <value>True</value>
+      <type>enum</type>
       <option>
 	<name>Yes</name>
 	<key>True</key>
