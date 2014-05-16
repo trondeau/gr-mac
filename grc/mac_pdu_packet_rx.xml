@@ -10,8 +10,8 @@
     <category>gr-mac</category>
     <import>import mac</import>
     <make>mac.pdu_packet_rx(dewhiten=$dewhiten,
-    output_invalid=$output_invalid
-    crc_calc=$check_crc
+    output_invalid=$output_invalid,
+    check_crc=$check_crc
 )</make>
 
     <param>
