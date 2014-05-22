@@ -225,7 +225,7 @@ class pdu_packet_rx(gr.basic_block):
     def handle_pdu(self, msg):
         meta = pmt.car(msg)
         data = pmt.u8vector_elements(pmt.cdr(msg))
-        data = ''.join([chr(d) for d in data])
+        data = struct.pack('<{0}B'.format(len(data)), *data)
 
         ok, payload = packet_utils.unmake_packet(data, 0, self.dewhiten, self.check_crc)
         if not ok:
@@ -234,6 +234,7 @@ class pdu_packet_rx(gr.basic_block):
                 return
 
         payload = map(ord, list(payload))
+        #print payload
         buf = pmt.init_u8vector(len(payload), payload)
         meta = pmt.dict_add(meta, pmt.intern('CRC_OK'), pmt.from_bool(ok))
         self.message_port_pub(self.msg_out, pmt.cons(meta, buf))
